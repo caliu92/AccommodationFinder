@@ -1,0 +1,53 @@
+name: Urlaubs-Agent (täglich)
+
+on:
+  schedule:
+    # GitHub-Cron ist immer UTC und kennt keine Zeitzonen/Sommerzeit; zusätzlich
+    # verzögert GitHub geplante Läufe teils um mehrere Stunden (dokumentiertes
+    # Verhalten, keine Garantie auf pünktliche Ausführung - in der Praxis hier
+    # schon >2h Verzögerung beobachtet). Zwei Zeitpunkte als Versuch, möglichst
+    # nah an 7 Uhr deutscher Zeit zu treffen (Winter-/Sommerzeit). Welcher
+    # zuerst durchkommt, sendet den Digest - main.py verhindert per
+    # Lauf-Historie (storage.laeufe_letzte), dass ein am selben Tag verspätet
+    # nachfeuernder zweiter Cron-Treffer doppelt sendet (siehe main._schon_heute_gelaufen).
+    - cron: "0 6 * * *"   # Ziel: 07:00 MEZ (Winterzeit, UTC+1)
+    - cron: "0 5 * * *"   # Ziel: 07:00 MESZ (Sommerzeit, UTC+2)
+  workflow_dispatch:   # erlaubt manuelles Starten per Button im Actions-Tab, IMMER (ignoriert die Tages-Dopplung oben)
+
+permissions:
+  contents: write       # nötig, damit die aktualisierte deals.sqlite committet werden kann
+  issues: write         # nötig, damit der Agent Feedback-Issues lesen/schließen kann (Stufe 1)
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Agent ausführen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_AN:   ${{ secrets.MAIL_AN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python main.py
+
+      - name: Gesehene Deals speichern (DB committen)
+        run: |
+          git config user.name  "urlaubs-agent"
+          git config user.email "bot@users.noreply.github.com"
+          git add deals.sqlite
+          git commit -m "Deals aktualisiert $(date -u +%F)" || echo "nichts zu committen"
+          git push || echo "push übersprungen"

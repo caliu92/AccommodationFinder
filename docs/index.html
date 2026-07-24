@@ -1,0 +1,561 @@
+<title>Urlaubs-Agent — mein_urlaub.py generieren</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --border: #d8dce1;
+    --accent: #0f766e;
+    --accent-fg: #ffffff;
+    --panel: #f7f8f9;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --fg: #eef0f2;
+      --muted: #9aa3ad;
+      --border: #33383f;
+      --accent: #2dd4bf;
+      --accent-fg: #06201d;
+      --panel: #1c1f24;
+      --code-bg: #0b0d10;
+      --code-fg: #d7dde3;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #eef0f2; --muted: #9aa3ad; --border: #33383f;
+    --accent: #2dd4bf; --accent-fg: #06201d; --panel: #1c1f24;
+    --code-bg: #0b0d10; --code-fg: #d7dde3;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --border: #d8dce1;
+    --accent: #0f766e; --accent-fg: #ffffff; --panel: #f7f8f9;
+    --code-bg: #0f172a; --code-fg: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem 4rem; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  p.intro { color: var(--muted); margin-top: 0; }
+  fieldset {
+    border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem 1.25rem;
+    margin: 0 0 1.25rem;
+  }
+  legend { padding: 0 .4rem; font-weight: 600; }
+  .field { margin-bottom: .9rem; }
+  .field label { display: block; font-weight: 500; margin-bottom: .25rem; }
+  .field .hint { color: var(--muted); font-size: .82rem; margin-top: .2rem; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .row > .field { flex: 1 1 160px; }
+  input[type=text], input[type=number], input[type=date], textarea, select {
+    width: 100%; padding: .5rem .6rem; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--panel); color: var(--fg); font: inherit;
+  }
+  textarea { resize: vertical; min-height: 4.5em; font-family: inherit; }
+  details > summary {
+    cursor: pointer; font-weight: 600; padding: .4rem 0; list-style: none;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸ "; }
+  details[open] > summary::before { content: "▾ "; }
+  .weights-sum { font-size: .82rem; color: var(--muted); margin-top: .3rem; }
+  .weights-sum.ok { color: var(--accent); }
+  button {
+    font: inherit; border: none; border-radius: 8px; padding: .65rem 1.2rem;
+    cursor: pointer; font-weight: 600;
+  }
+  .btn-primary { background: var(--accent); color: var(--accent-fg); }
+  .btn-secondary {
+    background: transparent; color: var(--fg); border: 1px solid var(--border);
+  }
+  #ausgabe-wrapper { margin-top: 1.5rem; display: none; }
+  #ausgabe-wrapper.sichtbar { display: block; }
+  pre#ausgabe {
+    background: var(--code-bg); color: var(--code-fg); padding: 1rem;
+    border-radius: 8px; overflow-x: auto; font-size: .8rem; line-height: 1.45;
+    max-height: 420px;
+  }
+  .toolbar { display: flex; gap: .6rem; align-items: center; margin-bottom: .6rem; }
+  .kopier-status { font-size: .85rem; color: var(--accent); }
+  .fehler { color: #dc2626; font-size: .85rem; margin-top: .5rem; }
+  footer { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+</style>
+
+<main>
+  <h1>mein_urlaub.py generieren</h1>
+  <p class="intro">
+    Fülle deine Eckdaten aus, klick auf "Code generieren", kopiere das
+    Ergebnis in die Datei <code>mein_urlaub.py</code> deiner Repo-Kopie
+    (Stift-Symbol → Inhalt ersetzen → Commit). Alles läuft nur in deinem
+    Browser — nichts wird irgendwohin gesendet.
+  </p>
+
+  <form id="form">
+    <fieldset>
+      <legend>Pflicht — deine Eckdaten</legend>
+
+      <div class="row">
+        <div class="field">
+          <label for="plz">Postleitzahl Startort</label>
+          <input type="text" id="plz" value="12345" required>
+        </div>
+        <div class="field">
+          <label for="richtung">Richtung</label>
+          <input type="text" id="richtung" value="Süden">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="erwachsene">Erwachsene</label>
+          <input type="number" id="erwachsene" min="1" value="2" required>
+        </div>
+        <div class="field">
+          <label for="kinderAlter">Alter der Kinder</label>
+          <input type="text" id="kinderAlter" value="5, 9">
+          <div class="hint">kommagetrennt, leer lassen wenn keine Kinder mitreisen</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="zeitraumVon">Reisezeitraum von</label>
+          <input type="date" id="zeitraumVon" value="2027-07-01" required>
+        </div>
+        <div class="field">
+          <label for="zeitraumBis">Reisezeitraum bis</label>
+          <input type="date" id="zeitraumBis" value="2027-07-14" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="flexTage">Flex-Tage (+/-)</label>
+          <input type="number" id="flexTage" min="0" value="2">
+        </div>
+        <div class="field">
+          <label for="minDauer">Mindestdauer (Tage)</label>
+          <input type="number" id="minDauer" min="1" value="7">
+        </div>
+        <div class="field">
+          <label for="mindSchlafzimmer">Mind. Schlafzimmer</label>
+          <input type="number" id="mindSchlafzimmer" min="1" value="2" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="budgetGuenstig">Budget "günstig" bis (€)</label>
+          <input type="number" id="budgetGuenstig" min="0" value="1500" required>
+        </div>
+        <div class="field">
+          <label for="budgetMittel">Budget "mittel" bis (€)</label>
+          <input type="number" id="budgetMittel" min="0" value="2300" required>
+        </div>
+        <div class="field">
+          <label for="budgetOberesEnde">Budget "oberes Ende" bis (€)</label>
+          <input type="number" id="budgetOberesEnde" min="0" value="2700" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="ausschluss">Ausschlussregionen</label>
+        <input type="text" id="ausschluss" value="Schweiz, Ungarn, Slowenien, Kroatien, Venetien/Jesolo">
+        <div class="hint">kommagetrennt, diese Länder/Regionen werden nie vorgeschlagen</div>
+      </div>
+    </fieldset>
+
+    <details>
+      <summary>Fortgeschritten (Standardwerte funktionieren, nur bei Bedarf ändern)</summary>
+
+      <fieldset>
+        <legend>Anreise &amp; Unterkunft</legend>
+        <div class="row">
+          <div class="field">
+            <label for="fahrzeitVon">Fahrzeit-Radius von (Std)</label>
+            <input type="number" id="fahrzeitVon" min="0" value="8">
+          </div>
+          <div class="field">
+            <label for="fahrzeitBis">Fahrzeit-Radius bis (Std)</label>
+            <input type="number" id="fahrzeitBis" min="0" value="10">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="anreise">Anreiseart</label>
+            <input type="text" id="anreise" value="nur mit Auto">
+          </div>
+          <div class="field">
+            <label for="unterkunft">Unterkunftsart</label>
+            <input type="text" id="unterkunft" value="egal (Hotel/FeWo/Camping-Bungalow)">
+          </div>
+        </div>
+        <div class="field">
+          <label for="zielregionen">Ziel-Startregionen (eine pro Zeile)</label>
+          <textarea id="zielregionen" rows="8">Bodensee
+Allgäu
+Schwarzwald / Titisee-Schluchsee
+Bayerischer Wald
+Tirol (Fiss/Serfaus/Ötztal/Zillertal)
+Salzkammergut (Wolfgangsee/Attersee)
+Kärnten (Wörthersee/Millstätter See)
+Steiermark Thermenland
+Südtirol (Meran/Pustertal/Eisacktal)
+Trentino (Levico/Caldonazzo)
+Gardasee
+Emilia-Romagna (Rimini/Cesenatico)
+Toskana (Maremma/Versilia/Chianti)
+Ligurien
+Umbrien
+Elsass / Vogesen
+Jura / Franche-Comté
+Burgund
+Provence-Nord / Drôme
+Ardèche</textarea>
+          <div class="hint">keine abschließende Liste — Claude darf auch andere Regionen im Radius vorschlagen</div>
+        </div>
+        <div class="field">
+          <label for="bewertungFokus">Bewertungs-Schwerpunkte (einer pro Zeile)</label>
+          <textarea id="bewertungFokus" rows="3">kinderfreundliche Umgebung (Spielplatz, Pool, flacher Strand/See)
+geeignet für Kleinkind UND Schulkind (passend zu deinen Kindern oben)
+gutes Preis-Leistungs-Verhältnis</textarea>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Geschmacksprofil / Match-Score</legend>
+        <div class="row">
+          <div class="field">
+            <label for="gewSchlafzimmer">Gewicht Schlafzimmer</label>
+            <input type="number" class="gewicht" id="gewSchlafzimmer" min="0" value="30">
+          </div>
+          <div class="field">
+            <label for="gewPool">Gewicht Pool</label>
+            <input type="number" class="gewicht" id="gewPool" min="0" value="25">
+          </div>
+          <div class="field">
+            <label for="gewKueche">Gewicht Küche</label>
+            <input type="number" class="gewicht" id="gewKueche" min="0" value="20">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="gewGroesseStil">Gewicht Größe/Stil</label>
+            <input type="number" class="gewicht" id="gewGroesseStil" min="0" value="15">
+          </div>
+          <div class="field">
+            <label for="gewLage">Gewicht Lage</label>
+            <input type="number" class="gewicht" id="gewLage" min="0" value="10">
+          </div>
+          <div class="field">
+            <label for="unklarFaktor">Unklar-Faktor</label>
+            <input type="number" id="unklarFaktor" min="0" max="1" step="0.1" value="0.5">
+          </div>
+        </div>
+        <div class="weights-sum" id="gewichtSumme"></div>
+
+        <div class="row">
+          <div class="field">
+            <label for="modPreisOberesEnde">Punktabzug "oberes Ende"</label>
+            <input type="number" id="modPreisOberesEnde" value="-5">
+          </div>
+          <div class="field">
+            <label for="modPreisUeberBudget">Punktabzug "über Budget"</label>
+            <input type="number" id="modPreisUeberBudget" value="-25">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="kinderBonusMax">Max. Kinder-Bonus</label>
+            <input type="number" id="kinderBonusMax" min="0" value="5">
+          </div>
+          <div class="field">
+            <label for="stilBonusMax">Max. Stil-Bonus</label>
+            <input type="number" id="stilBonusMax" min="0" value="5">
+          </div>
+          <div class="field">
+            <label for="minLandschaft">Min. Landschaftstypen/Lauf</label>
+            <input type="number" id="minLandschaft" min="1" value="3">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="referenzen">Stil-Anker-Beispiele (Format: Name :: Warum, eine Zeile pro Beispiel)</label>
+          <textarea id="referenzen" rows="4">Camping Village Mediterraneo (bei Jesolo, IT) :: entspanntes familientaugliches Ferienresort am Wasser mit Pool
+Nagalu Hotel Garni (Fiss, AT) :: modernes, überschaubares, familiäres Hotel Garni mit alpinem Design
+Hotel Alpin Chalet am Burgsee (Ladis, AT) :: moderner Chalet-/Boutique-Stil, naturnah am See</textarea>
+        </div>
+
+        <div class="field">
+          <label for="minMatchScore">Mindest-Match-Score für Mail (0-100)</label>
+          <input type="number" id="minMatchScore" min="0" max="100" value="40">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Betrieb &amp; Kosten</legend>
+        <div class="row">
+          <div class="field">
+            <label for="modell">Claude-Modell</label>
+            <input type="text" id="modell" value="claude-haiku-4-5-20251001">
+            <div class="hint">Opus statt Haiku = deutlich teurer</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="maxWebsearches">Max. Websuchen/Lauf</label>
+            <input type="number" id="maxWebsearches" min="1" value="5">
+          </div>
+          <div class="field">
+            <label for="maxWebfetches">Max. Webfetches/Lauf</label>
+            <input type="number" id="maxWebfetches" min="0" value="6">
+          </div>
+          <div class="field">
+            <label for="maxKandidaten">Max. Kandidaten/Lauf</label>
+            <input type="number" id="maxKandidaten" min="1" value="8">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="maxDirektlink">Max. Direktlink-Auflösungen</label>
+            <input type="number" id="maxDirektlink" min="0" value="4">
+          </div>
+          <div class="field">
+            <label for="direktlinkTokens">Direktlink max_tokens</label>
+            <input type="number" id="direktlinkTokens" min="1" value="1024">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="feedbackBeispiele">Feedback-Beispiele im Prompt</label>
+            <input type="number" id="feedbackBeispiele" min="0" value="20">
+          </div>
+          <div class="field">
+            <label for="feedbackBonusMax">Max. Feedback-Bonus (+/-)</label>
+            <input type="number" id="feedbackBonusMax" min="0" value="10">
+          </div>
+          <div class="field">
+            <label for="diagnoseFenster">Diagnose-Fenster (Läufe)</label>
+            <input type="number" id="diagnoseFenster" min="1" value="3">
+          </div>
+        </div>
+      </fieldset>
+    </details>
+
+    <div class="toolbar">
+      <button type="submit" class="btn-primary">Code generieren</button>
+    </div>
+    <div class="fehler" id="fehler"></div>
+  </form>
+
+  <div id="ausgabe-wrapper">
+    <div class="toolbar">
+      <button type="button" class="btn-secondary" id="kopierenBtn">In Zwischenablage kopieren</button>
+      <span class="kopier-status" id="kopierStatus"></span>
+    </div>
+    <pre id="ausgabe"></pre>
+  </div>
+
+  <footer>
+    Diese Seite läuft komplett lokal in deinem Browser, es werden keine
+    Daten übertragen oder gespeichert.
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  function pyStr(s) {
+    return JSON.stringify(String(s));
+  }
+
+  function pyList(items) {
+    if (!items.length) return "[]";
+    return "[" + items.map(pyStr).join(", ") + "]";
+  }
+
+  function pyIntList(items) {
+    if (!items.length) return "[]";
+    return "[" + items.join(", ") + "]";
+  }
+
+  function splitKommagetrennt(val) {
+    return val.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function splitZeilen(val) {
+    return val.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function num(id) {
+    var el = document.getElementById(id);
+    var v = parseFloat(el.value);
+    return v;
+  }
+
+  function txt(id) {
+    return document.getElementById(id).value.trim();
+  }
+
+  function aktualisiereGewichtSumme() {
+    var ids = ["gewSchlafzimmer", "gewPool", "gewKueche", "gewGroesseStil", "gewLage"];
+    var summe = ids.reduce(function (acc, id) { return acc + (parseFloat(document.getElementById(id).value) || 0); }, 0);
+    var el = document.getElementById("gewichtSumme");
+    el.textContent = "Summe der Gewichte: " + summe + (summe === 100 ? " (perfekt)" : " (Empfehlung: 100)");
+    el.classList.toggle("ok", summe === 100);
+  }
+
+  document.querySelectorAll(".gewicht").forEach(function (el) {
+    el.addEventListener("input", aktualisiereGewichtSumme);
+  });
+  aktualisiereGewichtSumme();
+
+  function baueRegionenListe(zeilen) {
+    return "[\n" + zeilen.map(function (r) { return "    " + pyStr(r) + ","; }).join("\n") + "\n]";
+  }
+
+  function baueReferenzen(zeilen) {
+    var eintraege = zeilen.map(function (zeile) {
+      var teile = zeile.split("::");
+      var name = (teile[0] || "").trim();
+      var warum = (teile.slice(1).join("::") || "").trim();
+      return "    {\"name\": " + pyStr(name) + ",\n     \"warum\": " + pyStr(warum) + "},";
+    });
+    if (!eintraege.length) return "[]";
+    return "[\n" + eintraege.join("\n") + "\n]";
+  }
+
+  function generiere() {
+    var fehlerEl = document.getElementById("fehler");
+    fehlerEl.textContent = "";
+
+    var pflichtfelder = [
+      ["plz", "Postleitzahl"], ["erwachsene", "Erwachsene"],
+      ["zeitraumVon", "Reisezeitraum von"], ["zeitraumBis", "Reisezeitraum bis"],
+      ["mindSchlafzimmer", "Mind. Schlafzimmer"],
+      ["budgetGuenstig", "Budget günstig"], ["budgetMittel", "Budget mittel"],
+      ["budgetOberesEnde", "Budget oberes Ende"]
+    ];
+    for (var i = 0; i < pflichtfelder.length; i++) {
+      var el = document.getElementById(pflichtfelder[i][0]);
+      if (!el.value) {
+        fehlerEl.textContent = "Bitte ausfüllen: " + pflichtfelder[i][1];
+        el.focus();
+        return;
+      }
+    }
+
+    var kinderAlter = splitKommagetrennt(txt("kinderAlter")).map(function (s) { return parseInt(s, 10); }).filter(function (n) { return !isNaN(n); });
+    var ausschluss = splitKommagetrennt(txt("ausschluss"));
+    var zielregionen = splitZeilen(txt("zielregionen"));
+    var bewertungFokus = splitZeilen(txt("bewertungFokus"));
+    var referenzen = splitZeilen(txt("referenzen"));
+
+    var code = "" +
+'"""\n' +
+'DEINE URLAUBSKONFIGURATION\n' +
+'==========================\n' +
+'Erzeugt mit der Generator-Seite (docs/index.html). Du kannst hier jederzeit\n' +
+'von Hand weiter anpassen.\n' +
+'"""\n\n' +
+'# =============================================================================\n' +
+'# PFLICHT - deine Eckdaten\n' +
+'# =============================================================================\n\n' +
+'START_PLZ = ' + pyStr(txt("plz")) + '\n' +
+'RICHTUNG = ' + pyStr(txt("richtung")) + '\n' +
+'ERWACHSENE = ' + num("erwachsene") + '\n' +
+'KINDER_ALTER = ' + pyIntList(kinderAlter) + '\n' +
+'ZEITRAUM_VON = ' + pyStr(txt("zeitraumVon")) + '\n' +
+'ZEITRAUM_BIS = ' + pyStr(txt("zeitraumBis")) + '\n' +
+'FLEX_TAGE = ' + num("flexTage") + '\n' +
+'MIN_DAUER_TAGE = ' + num("minDauer") + '\n' +
+'MIND_SCHLAFZIMMER = ' + num("mindSchlafzimmer") + '\n' +
+'BUDGET_GUENSTIG = ' + num("budgetGuenstig") + '\n' +
+'BUDGET_MITTEL = ' + num("budgetMittel") + '\n' +
+'BUDGET_OBERES_ENDE = ' + num("budgetOberesEnde") + '\n' +
+'AUSSCHLUSS_REGIONEN = ' + pyList(ausschluss) + '\n\n' +
+'# =============================================================================\n' +
+'# FORTGESCHRITTEN - Standardwerte funktionieren, nur ändern wenn du weißt,\n' +
+'# was du tust\n' +
+'# =============================================================================\n\n' +
+'FAHRZEIT_VON_STUNDEN = ' + num("fahrzeitVon") + '\n' +
+'FAHRZEIT_BIS_STUNDEN = ' + num("fahrzeitBis") + '\n' +
+'ANREISE = ' + pyStr(txt("anreise")) + '\n' +
+'UNTERKUNFT = ' + pyStr(txt("unterkunft")) + '\n\n' +
+'ZIELREGIONEN = ' + baueRegionenListe(zielregionen) + '\n\n' +
+'BEWERTUNG_FOKUS = ' + pyList(bewertungFokus) + '\n\n' +
+'GEWICHT_SCHLAFZIMMER = ' + num("gewSchlafzimmer") + '\n' +
+'GEWICHT_POOL = ' + num("gewPool") + '\n' +
+'GEWICHT_KUECHE = ' + num("gewKueche") + '\n' +
+'GEWICHT_GROESSE_STIL = ' + num("gewGroesseStil") + '\n' +
+'GEWICHT_LAGE = ' + num("gewLage") + '\n' +
+'UNKLAR_FAKTOR = ' + num("unklarFaktor") + '\n\n' +
+'MODIFIKATOR_PREIS_OBERES_ENDE = ' + num("modPreisOberesEnde") + '\n' +
+'MODIFIKATOR_PREIS_UEBER_BUDGET = ' + num("modPreisUeberBudget") + '\n' +
+'KINDER_BONUS_MAX = ' + num("kinderBonusMax") + '\n' +
+'STIL_BONUS_MAX = ' + num("stilBonusMax") + '\n\n' +
+'REFERENZEN = ' + baueReferenzen(referenzen) + '\n\n' +
+'MIN_LANDSCHAFTSTYPEN_PRO_LAUF = ' + num("minLandschaft") + '\n' +
+'MIN_MATCH_SCORE_FUER_MAIL = ' + num("minMatchScore") + '\n\n' +
+'MODELL = ' + pyStr(txt("modell")) + '\n\n' +
+'MAX_WEBSEARCHES_PRO_LAUF = ' + num("maxWebsearches") + '\n' +
+'MAX_WEBFETCHES_PRO_LAUF = ' + num("maxWebfetches") + '\n' +
+'MAX_KANDIDATEN_BEWERTEN = ' + num("maxKandidaten") + '\n\n' +
+'MAX_DIREKTLINK_AUFLOESUNG = ' + num("maxDirektlink") + '\n' +
+'DIREKTLINK_MAX_TOKENS = ' + num("direktlinkTokens") + '\n\n' +
+'FEEDBACK_BEISPIELE_IM_PROMPT = ' + num("feedbackBeispiele") + '\n' +
+'FEEDBACK_BONUS_MAX = ' + num("feedbackBonusMax") + '\n\n' +
+'DIAGNOSE_FENSTER_LAEUFE = ' + num("diagnoseFenster") + '\n';
+
+    document.getElementById("ausgabe").textContent = code;
+    document.getElementById("ausgabe-wrapper").classList.add("sichtbar");
+    document.getElementById("kopierStatus").textContent = "";
+    document.getElementById("ausgabe-wrapper").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  document.getElementById("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    generiere();
+  });
+
+  document.getElementById("kopierenBtn").addEventListener("click", function () {
+    var code = document.getElementById("ausgabe").textContent;
+    var status = document.getElementById("kopierStatus");
+    function ok() { status.textContent = "Kopiert!"; setTimeout(function () { status.textContent = ""; }, 2000); }
+    function fail() { status.textContent = "Kopieren fehlgeschlagen - bitte manuell markieren und kopieren."; }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(ok, function () {
+        kopiereFallback(code, ok, fail);
+      });
+    } else {
+      kopiereFallback(code, ok, fail);
+    }
+  });
+
+  function kopiereFallback(code, ok, fail) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = code;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var erfolgreich = document.execCommand("copy");
+      document.body.removeChild(ta);
+      erfolgreich ? ok() : fail();
+    } catch (e) {
+      fail();
+    }
+  }
+})();
+</script>
